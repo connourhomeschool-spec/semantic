@@ -2715,14 +2715,10 @@ int main(int argc, char** argv) {
         }
         prevVelY = vel.y;
 
-        // If space is buffered and we just landed OR we're on ground, jump immediately.
-// No friction penalty if you jump the same frame you land.
+
         bool canJump = onGround || coyoteT > 0.f;
         if (jumpQueued && canJump) {
-            // Bhop speed chain: only apply the boost multiplier when already
-            // above MAX_SPEED — that speed was earned through air strafing and
-            // should be preserved. Below MAX_SPEED, just jump at current speed
-            // with no bonus, so spamming space on flat ground doesn't stack speed.
+        
             float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
             if (hspd > MAX_SPEED) {
                 float boost = crouch ? BHOP_BOOST * 1.05f : BHOP_BOOST;
@@ -2738,15 +2734,10 @@ int main(int argc, char** argv) {
             if (hasJump) { ma_sound_seek_to_pcm_frame(&sndJump, 0); ma_sound_start(&sndJump); }
         }
         else if (justLanded) {
-            // Landed without jumping: set bhop grace window to suppress friction
-            // briefly, giving the player a small window to still chain the bhop
+          
             bhopGraceT = 0.08f;
         }
 
-        // Guard: don't start a slide if we're in a bhop chain (speed > MAX_SPEED).
-// At bhop speeds the slide cap (SLIDE_SPEED) would kill momentum, which
-// is exactly the "shift ruins bhop" problem. Let the player hold shift
-// mid-air for the crouch-boost on the next jump without punishing them.
         if (crouch && onGround && !sliding) {
             float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
             if (hspd > MOVE_SPEED * 0.7f && hspd <= MAX_SPEED * 1.1f) {
@@ -2790,7 +2781,7 @@ int main(int argc, char** argv) {
             cam.pos.z = resolved.z;
         }
 
-        // Speed-based FOV — scales up to BHOP_CAP
+        // Speed-based FOV, scales up to BHOP_CAP
         float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
         float fovTarget = FOV_DEG + clampf(hspd * FOV_SPEED_SCALE, 0.f, FOV_SPEED_MAX);
         fovSmooth = lerpf(fovSmooth, fovTarget, clampf(dt * FOV_LERP_RATE, 0.f, 1.f));
@@ -2802,7 +2793,7 @@ int main(int argc, char** argv) {
         float rollTarget = clampf(lateralSpd / BHOP_CAP, -1.f, 1.f) * STRAFE_LEAN_MAX;
         camRollSmooth = lerpf(camRollSmooth, rollTarget, clampf(dt * STRAFE_LEAN_RATE, 0.f, 1.f));
 
-        // Simple damped spring: squish decays and bounces back
+        // Simple damped spring, squish decays and bounces back
         landSquishVel += (-LAND_SQUISH_STIFF * landSquish - LAND_SQUISH_DAMP * landSquishVel) * dt;
         landSquish += landSquishVel * dt;
         landSquish = clampf(landSquish, -0.15f, 1.f); // allow small upward bounce
