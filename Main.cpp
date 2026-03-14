@@ -24,31 +24,31 @@
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
 #  pragma comment(lib, "ws2_32.lib")
-using SockLen = int;
-using RawSocket = SOCKET;
-static const RawSocket BAD_SOCK = INVALID_SOCKET;
-inline int  netClose(RawSocket s) { return closesocket(s); }
-inline int  netErrno() { return WSAGetLastError(); }
-inline bool netWouldBlock(int e) { return e == WSAEWOULDBLOCK; }
+   using SockLen   = int;
+   using RawSocket = SOCKET;
+   static const RawSocket BAD_SOCK = INVALID_SOCKET;
+   inline int  netClose(RawSocket s)  { return closesocket(s); }
+   inline int  netErrno()             { return WSAGetLastError(); }
+   inline bool netWouldBlock(int e)   { return e == WSAEWOULDBLOCK; }
 #else
 #  include <sys/socket.h>
 #  include <arpa/inet.h>
 #  include <netinet/in.h>
 #  include <fcntl.h>
 #  include <errno.h>
-using SockLen = socklen_t;
-using RawSocket = int;
-static const RawSocket BAD_SOCK = -1;
-inline int  netClose(RawSocket s) { return close(s); }
-inline int  netErrno() { return errno; }
-inline bool netWouldBlock(int e) { return e == EWOULDBLOCK || e == EAGAIN; }
+   using SockLen   = socklen_t;
+   using RawSocket = int;
+   static const RawSocket BAD_SOCK = -1;
+   inline int  netClose(RawSocket s)  { return close(s); }
+   inline int  netErrno()             { return errno; }
+   inline bool netWouldBlock(int e)   { return e == EWOULDBLOCK || e == EAGAIN; }
 #endif
 
 #include <array>
 
-constexpr int    NET_PORT = 7777;
+constexpr int    NET_PORT      = 7777;
 constexpr int    NET_MAX_PEERS = 4;
-constexpr double NET_SEND_HZ = 30.0;
+constexpr double NET_SEND_HZ   = 30.0;
 constexpr double NET_TIMEOUT_S = 5.0;
 
 #pragma pack(push, 1)
@@ -62,7 +62,7 @@ struct PlayerPacket {
 };
 #pragma pack(pop)
 constexpr uint8_t PKT_STATE = 1;
-constexpr uint8_t PKT_NAME = 2;
+constexpr uint8_t PKT_NAME  = 2;
 
 #pragma pack(push, 1)
 struct NamePacket {
@@ -73,45 +73,45 @@ struct NamePacket {
 #pragma pack(pop)
 
 struct RemotePeer {
-    bool        active = false;
-    uint8_t     id = 0;
-    float       x = 0, y = 0, z = 0, yaw = 0, pitch = 0;
-    uint8_t     flags = 0;
-    uint16_t    lastSeq = 0;
+    bool        active   = false;
+    uint8_t     id       = 0;
+    float       x=0,y=0,z=0, yaw=0, pitch=0;
+    uint8_t     flags    = 0;
+    uint16_t    lastSeq  = 0;
     double      lastSeen = 0.0;
-    float       vx = 0, vy = 0, vz = 0;
-    float       prevX = 0, prevY = 0, prevZ = 0;
+    float       vx=0,vy=0,vz=0;
+    float       prevX=0,prevY=0,prevZ=0;
     double      prevTime = 0.0;
-    sockaddr_in addr = {};
+    sockaddr_in addr     = {};
     char        username[32] = "Player";
-    GLuint      nameTex = 0;
+    GLuint      nameTex  = 0;
 };
 
 struct NetCtx {
-    bool        isHost = false;
-    bool        ok = false;
-    uint8_t     myId = 0;
-    uint16_t    seq = 0;
-    RawSocket   sock = BAD_SOCK;
-    sockaddr_in bindAddr = {};
-    sockaddr_in hostAddr = {};
+    bool        isHost          = false;
+    bool        ok              = false;
+    uint8_t     myId            = 0;
+    uint16_t    seq             = 0;
+    RawSocket   sock            = BAD_SOCK;
+    sockaddr_in bindAddr        = {};
+    sockaddr_in hostAddr        = {};
     bool        connectedToHost = false;
     std::array<RemotePeer, NET_MAX_PEERS> peers = {};
-    double      lastSendTime = 0.0;
-    double      lastNameTime = 0.0;
-    char        myUsername[32] = "Player";
+    double      lastSendTime    = 0.0;
+    double      lastNameTime    = 0.0;
+    char        myUsername[32]  = "Player";
 };
 
 inline bool netInit(NetCtx& ctx, bool host, const char* joinIp = nullptr)
 {
 #ifdef _WIN32
     WSADATA wd;
-    if (WSAStartup(MAKEWORD(2, 2), &wd) != 0) { fprintf(stderr, "[net] WSAStartup failed\n"); return false; }
+    if (WSAStartup(MAKEWORD(2,2), &wd) != 0) { fprintf(stderr,"[net] WSAStartup failed\n"); return false; }
 #endif
     ctx.isHost = host;
-    ctx.myId = host ? 0 : 255;
-    ctx.sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (ctx.sock == BAD_SOCK) { fprintf(stderr, "[net] socket() failed: %d\n", netErrno()); return false; }
+    ctx.myId   = host ? 0 : 255;
+    ctx.sock   = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (ctx.sock == BAD_SOCK) { fprintf(stderr,"[net] socket() failed: %d\n", netErrno()); return false; }
 #ifdef _WIN32
     u_long mode = 1; ioctlsocket(ctx.sock, FIONBIO, &mode);
 #else
@@ -120,23 +120,22 @@ inline bool netInit(NetCtx& ctx, bool host, const char* joinIp = nullptr)
     int reuse = 1;
     setsockopt(ctx.sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
     memset(&ctx.bindAddr, 0, sizeof(ctx.bindAddr));
-    ctx.bindAddr.sin_family = AF_INET;
-    ctx.bindAddr.sin_port = htons((u_short)NET_PORT);
+    ctx.bindAddr.sin_family      = AF_INET;
+    ctx.bindAddr.sin_port        = htons((u_short)NET_PORT);
     ctx.bindAddr.sin_addr.s_addr = INADDR_ANY;
     if (bind(ctx.sock, reinterpret_cast<sockaddr*>(&ctx.bindAddr), sizeof(ctx.bindAddr)) != 0) {
-        fprintf(stderr, "[net] bind() failed: %d\n", netErrno());
+        fprintf(stderr,"[net] bind() failed: %d\n", netErrno());
         netClose(ctx.sock); ctx.sock = BAD_SOCK; return false;
     }
     if (!host && joinIp) {
         memset(&ctx.hostAddr, 0, sizeof(ctx.hostAddr));
         ctx.hostAddr.sin_family = AF_INET;
-        ctx.hostAddr.sin_port = htons((u_short)NET_PORT);
+        ctx.hostAddr.sin_port   = htons((u_short)NET_PORT);
         inet_pton(AF_INET, joinIp, &ctx.hostAddr.sin_addr);
         ctx.connectedToHost = true;
-        fprintf(stdout, "[net] Client — joining %s:%d\n", joinIp, NET_PORT);
-    }
-    else if (host) {
-        fprintf(stdout, "[net] Host — listening on UDP %d\n", NET_PORT);
+        fprintf(stdout,"[net] Client — joining %s:%d\n", joinIp, NET_PORT);
+    } else if (host) {
+        fprintf(stdout,"[net] Host — listening on UDP %d\n", NET_PORT);
     }
     ctx.ok = true; return true;
 }
@@ -153,16 +152,16 @@ inline void netShutdown(NetCtx& ctx)
 inline RemotePeer* netFindPeer(NetCtx& ctx, const sockaddr_in& from)
 {
     for (auto& p : ctx.peers)
-        if (p.active && p.addr.sin_addr.s_addr == from.sin_addr.s_addr && p.addr.sin_port == from.sin_port)
+        if (p.active && p.addr.sin_addr.s_addr==from.sin_addr.s_addr && p.addr.sin_port==from.sin_port)
             return &p;
     for (int i = 0; i < NET_MAX_PEERS; i++) {
         if (!ctx.peers[i].active) {
-            ctx.peers[i] = RemotePeer{};
+            ctx.peers[i]        = RemotePeer{};
             ctx.peers[i].active = true;
-            ctx.peers[i].id = (uint8_t)i;
-            ctx.peers[i].addr = from;
+            ctx.peers[i].id     = (uint8_t)i;
+            ctx.peers[i].addr   = from;
             char ip[INET_ADDRSTRLEN]; inet_ntop(AF_INET, &from.sin_addr, ip, sizeof(ip));
-            fprintf(stdout, "[net] Peer connected: %s:%d (slot %d)\n", ip, ntohs(from.sin_port), i);
+            fprintf(stdout,"[net] Peer connected: %s:%d (slot %d)\n", ip, ntohs(from.sin_port), i);
             return &ctx.peers[i];
         }
     }
@@ -170,22 +169,21 @@ inline RemotePeer* netFindPeer(NetCtx& ctx, const sockaddr_in& from)
 }
 
 inline void netSendState(NetCtx& ctx, float x, float y, float z,
-    float yaw, float pitch, uint8_t flags, double now)
+                         float yaw, float pitch, uint8_t flags, double now)
 {
     if (!ctx.ok) return;
     if (now - ctx.lastSendTime < 1.0 / NET_SEND_HZ) return;
     ctx.lastSendTime = now;
     PlayerPacket pkt;
-    pkt.type = PKT_STATE; pkt.peerId = ctx.myId; pkt.seq = ctx.seq++;
-    pkt.x = x; pkt.y = y; pkt.z = z; pkt.yaw = yaw; pkt.pitch = pitch; pkt.flags = flags;
+    pkt.type=PKT_STATE; pkt.peerId=ctx.myId; pkt.seq=ctx.seq++;
+    pkt.x=x; pkt.y=y; pkt.z=z; pkt.yaw=yaw; pkt.pitch=pitch; pkt.flags=flags;
     if (ctx.isHost) {
         for (auto& peer : ctx.peers)
             if (peer.active) sendto(ctx.sock, reinterpret_cast<const char*>(&pkt), sizeof(pkt), 0,
                 reinterpret_cast<const sockaddr*>(&peer.addr), sizeof(peer.addr));
-    }
-    else if (ctx.connectedToHost) {
+    } else if (ctx.connectedToHost) {
         sendto(ctx.sock, reinterpret_cast<const char*>(&pkt), sizeof(pkt), 0,
-            reinterpret_cast<const sockaddr*>(&ctx.hostAddr), sizeof(ctx.hostAddr));
+               reinterpret_cast<const sockaddr*>(&ctx.hostAddr), sizeof(ctx.hostAddr));
     }
 }
 
@@ -195,7 +193,7 @@ inline void netSendName(NetCtx& ctx, double now)
     if (now - ctx.lastNameTime < 3.0) return;
     ctx.lastNameTime = now;
     NamePacket pkt;
-    pkt.type = PKT_NAME;
+    pkt.type   = PKT_NAME;
     pkt.peerId = ctx.myId;
     memset(pkt.username, 0, sizeof(pkt.username));
     strncpy(pkt.username, ctx.myUsername, 31);
@@ -203,10 +201,9 @@ inline void netSendName(NetCtx& ctx, double now)
         for (auto& peer : ctx.peers)
             if (peer.active) sendto(ctx.sock, reinterpret_cast<const char*>(&pkt), sizeof(pkt), 0,
                 reinterpret_cast<const sockaddr*>(&peer.addr), sizeof(peer.addr));
-    }
-    else if (ctx.connectedToHost) {
+    } else if (ctx.connectedToHost) {
         sendto(ctx.sock, reinterpret_cast<const char*>(&pkt), sizeof(pkt), 0,
-            reinterpret_cast<const sockaddr*>(&ctx.hostAddr), sizeof(ctx.hostAddr));
+               reinterpret_cast<const sockaddr*>(&ctx.hostAddr), sizeof(ctx.hostAddr));
     }
 }
 
@@ -216,12 +213,12 @@ inline void netPoll(NetCtx& ctx, double now)
     uint8_t buf[512]; sockaddr_in from; SockLen fromLen = sizeof(from);
     for (;;) {
         int n = (int)recvfrom(ctx.sock, reinterpret_cast<char*>(buf), sizeof(buf), 0,
-            reinterpret_cast<sockaddr*>(&from), &fromLen);
+                              reinterpret_cast<sockaddr*>(&from), &fromLen);
         if (n < 0) { if (netWouldBlock(netErrno())) break; break; }
         if (n < (int)sizeof(PlayerPacket)) continue;
         PlayerPacket* pkt = reinterpret_cast<PlayerPacket*>(buf);
         if (pkt->type == PKT_NAME) {
-            NamePacket* np = reinterpret_cast<NamePacket*>(buf);
+                        NamePacket* np = reinterpret_cast<NamePacket*>(buf);
             RemotePeer* peer = netFindPeer(ctx, from);
             if (peer) {
                 memset(peer->username, 0, sizeof(peer->username));
@@ -230,9 +227,9 @@ inline void netPoll(NetCtx& ctx, double now)
                 if (ctx.isHost) {
                     for (auto& other : ctx.peers) {
                         if (!other.active) continue;
-                        if (other.addr.sin_addr.s_addr == from.sin_addr.s_addr && other.addr.sin_port == from.sin_port) continue;
+                        if (other.addr.sin_addr.s_addr==from.sin_addr.s_addr && other.addr.sin_port==from.sin_port) continue;
                         sendto(ctx.sock, reinterpret_cast<const char*>(buf), n, 0,
-                            reinterpret_cast<const sockaddr*>(&other.addr), sizeof(other.addr));
+                               reinterpret_cast<const sockaddr*>(&other.addr), sizeof(other.addr));
                     }
                 }
             }
@@ -252,30 +249,30 @@ inline void netPoll(NetCtx& ctx, double now)
                 peer->vz = (pkt->z - peer->prevZ) / (float)dt;
             }
         }
-        peer->prevX = peer->x; peer->prevY = peer->y; peer->prevZ = peer->z; peer->prevTime = peer->lastSeen;
-        peer->x = pkt->x; peer->y = pkt->y; peer->z = pkt->z;
-        peer->yaw = pkt->yaw; peer->pitch = pkt->pitch; peer->flags = pkt->flags;
-        peer->lastSeq = pkt->seq; peer->lastSeen = now;
+        peer->prevX=peer->x; peer->prevY=peer->y; peer->prevZ=peer->z; peer->prevTime=peer->lastSeen;
+        peer->x=pkt->x; peer->y=pkt->y; peer->z=pkt->z;
+        peer->yaw=pkt->yaw; peer->pitch=pkt->pitch; peer->flags=pkt->flags;
+        peer->lastSeq=pkt->seq; peer->lastSeen=now;
         if (ctx.isHost) {
             for (auto& other : ctx.peers) {
                 if (!other.active) continue;
-                if (other.addr.sin_addr.s_addr == from.sin_addr.s_addr && other.addr.sin_port == from.sin_port) continue;
+                if (other.addr.sin_addr.s_addr==from.sin_addr.s_addr && other.addr.sin_port==from.sin_port) continue;
                 sendto(ctx.sock, reinterpret_cast<const char*>(buf), n, 0,
-                    reinterpret_cast<const sockaddr*>(&other.addr), sizeof(other.addr));
+                       reinterpret_cast<const sockaddr*>(&other.addr), sizeof(other.addr));
             }
         }
     }
     for (auto& p : ctx.peers)
-        if (p.active && now - p.lastSeen > NET_TIMEOUT_S) { fprintf(stdout, "[net] Peer %d timed out\n", p.id); p.active = false; }
+        if (p.active && now - p.lastSeen > NET_TIMEOUT_S) { fprintf(stdout,"[net] Peer %d timed out\n", p.id); p.active=false; }
 }
 
 inline void netGetPeerPos(const RemotePeer& p, double now, float& ox, float& oy, float& oz)
 {
     double dt = now - p.lastSeen;
     if (dt > 2.0 / NET_SEND_HZ) dt = 2.0 / NET_SEND_HZ;
-    ox = p.x + p.vx * (float)dt;
-    oy = p.y + p.vy * (float)dt;
-    oz = p.z + p.vz * (float)dt;
+    ox = p.x + p.vx*(float)dt;
+    oy = p.y + p.vy*(float)dt;
+    oz = p.z + p.vz*(float)dt;
 }
 
 #include <cstdio>
@@ -570,29 +567,29 @@ static void genBuilding(std::vector<Vert>& V,
 
     pushQuad(V, { x0,height,z0 }, { x1,height,z0 }, { x0,height,z1 }, { x1,height,z1 }, { 0,1,0 }, matWall);
 
-    float finOut = 0.4f;   // how far they stick out past the wall
+        float finOut = 0.4f;   // how far they stick out past the wall
     float finH = 0.22f;  // fin thickness
     for (int fl = 5; fl < nF; fl += 5) {
         float fy = fl * FLOOR_H;
         if (fy >= height - 1.f) break;
         float yt = fy + finH;
-        pushQuad(V, { x1,yt,z0 }, { x1 + finOut,yt,z0 }, { x1,yt,z1 }, { x1 + finOut,yt,z1 }, { 0,1,0 }, matDark);
-        pushQuad(V, { x0 - finOut,yt,z0 }, { x0,yt,z0 }, { x0 - finOut,yt,z1 }, { x0,yt,z1 }, { 0,1,0 }, matDark);
-        pushQuad(V, { x0,yt,z1 }, { x1,yt,z1 }, { x0,yt,z1 + finOut }, { x1,yt,z1 + finOut }, { 0,1,0 }, matDark);
-        pushQuad(V, { x0,yt,z0 - finOut }, { x1,yt,z0 - finOut }, { x0,yt,z0 }, { x1,yt,z0 }, { 0,1,0 }, matDark);
-        pushQuad(V, { x1 + finOut,fy,z0 }, { x1,fy,z0 }, { x1 + finOut,fy,z1 }, { x1,fy,z1 }, { 0,-1,0 }, matDark);
+            pushQuad(V, { x1,yt,z0 }, { x1 + finOut,yt,z0 }, { x1,yt,z1 }, { x1 + finOut,yt,z1 }, { 0,1,0 }, matDark);
+            pushQuad(V, { x0 - finOut,yt,z0 }, { x0,yt,z0 }, { x0 - finOut,yt,z1 }, { x0,yt,z1 }, { 0,1,0 }, matDark);
+            pushQuad(V, { x0,yt,z1 }, { x1,yt,z1 }, { x0,yt,z1 + finOut }, { x1,yt,z1 + finOut }, { 0,1,0 }, matDark);
+            pushQuad(V, { x0,yt,z0 - finOut }, { x1,yt,z0 - finOut }, { x0,yt,z0 }, { x1,yt,z0 }, { 0,1,0 }, matDark);
+            pushQuad(V, { x1 + finOut,fy,z0 }, { x1,fy,z0 }, { x1 + finOut,fy,z1 }, { x1,fy,z1 }, { 0,-1,0 }, matDark);
         pushQuad(V, { x0,fy,z0 }, { x0 - finOut,fy,z0 }, { x0,fy,z1 }, { x0 - finOut,fy,z1 }, { 0,-1,0 }, matDark);
         pushQuad(V, { x0,fy,z1 + finOut }, { x1,fy,z1 + finOut }, { x0,fy,z1 }, { x1,fy,z1 }, { 0,-1,0 }, matDark);
         pushQuad(V, { x0,fy,z0 }, { x1,fy,z0 }, { x0,fy,z0 - finOut }, { x1,fy,z0 - finOut }, { 0,-1,0 }, matDark);
     }
 
-    float pw = 0.5f, ph = 1.5f;
+        float pw = 0.5f, ph = 1.5f;
     pushBox(V, x0 - pw, height, z0 - pw, x0, height + ph, z1 + pw, matDark);  // -X wall
     pushBox(V, x1, height, z0 - pw, x1 + pw, height + ph, z1 + pw, matDark);  // +X wall
     pushBox(V, x0, height, z0 - pw, x1, height + ph, z0, matDark);  // -Z wall
     pushBox(V, x0, height, z1, x1, height + ph, z1 + pw, matDark);  // +Z wall
 
-    if (height > 25.f) {
+        if (height > 25.f) {
         float phw = hw * .30f, phd = hd * .30f, phh = 3.5f + nv * 5.f;
         pushBox(V, cx - phw, height, cz - phd, cx + phw, height + phh, cz + phd, matWall);
         if (height > 100.f) {
@@ -601,7 +598,7 @@ static void genBuilding(std::vector<Vert>& V,
         }
     }
 
-    if (height > 18.f && height < 65.f && nv>0.45f) {
+        if (height > 18.f && height < 65.f && nv>0.45f) {
         float wr = 1.1f, wh = 3.2f;
         float wx = cx + (nv - .5f) * hw * .6f, wz = cz + (nv - .3f) * hd * .6f;
         pushBox(V, wx - wr, height, wz - wr, wx + wr, height + wh, wz + wr, matDark);
@@ -1654,6 +1651,17 @@ void main(){
         col=agx(col*uTonemapExposure); col=agxEotf(col);
     col=pow(max(col,vec3(0.)),vec3(1./uTonemapGamma));
 
+    // ============================================================
+    // POST-TONEMAP SCREEN-SPACE FOG  --  Silent Hill style
+
+    // Key properties:
+    //   * Very dense: geometry beyond ~150u is nearly invisible
+    //   * Ground-hugging: fog thickest at floor level, thinner overhead
+    //   * Sky = fog: sky pixels get same fog colour, no horizon seam
+    //   * Cold desaturated grey, independent of day/night sun palette
+    //   * Near-field haze: even close surfaces (20-80u) show scatter
+    // ============================================================
+
     // --- Silent Hill fog colour (driven by uniforms) ---
     vec3 fogColTM = mix(uFogColorDay, uFogColorNight, uNightFactor);
 
@@ -1806,9 +1814,9 @@ void main(){
 
 // ghost player globals
 static GLuint gGhostProg = 0;
-static GLuint gGhostVAO = 0;
-static GLuint gGhostVBO = 0;
-static GLuint gGhostEBO = 0;
+static GLuint gGhostVAO  = 0;
+static GLuint gGhostVBO  = 0;
+static GLuint gGhostEBO  = 0;
 static GLsizei gGhostIdxCount = 0;
 
 static void buildGhostMesh() {
@@ -1816,56 +1824,56 @@ static void buildGhostMesh() {
     const float R = 0.35f;  // radius
     const float HALF_H = 0.7f;  // half cylinder height (total body = 1.4u)
 
-    struct GV { float x, y, z, nx, ny, nz; };
+    struct GV { float x,y,z, nx,ny,nz; };
     std::vector<GV>       verts;
     std::vector<uint32_t> idx;
 
     auto pushSphere = [&](float theta, float phi, float yOff) {
         float st = sinf(theta), ct = cosf(theta);
-        float sp = sinf(phi), cp = cosf(phi);
-        float nx = st * cp, ny = sp, nz = ct * cp;
-        verts.push_back({ nx * R, ny * R + yOff, nz * R, nx, ny, nz });
-        };
+        float sp = sinf(phi),   cp = cosf(phi);
+        float nx = st*cp, ny = sp, nz = ct*cp;
+        verts.push_back({nx*R, ny*R + yOff, nz*R, nx, ny, nz});
+    };
 
-    for (int j = 0; j <= RINGS / 2; j++) {
-        float phi = (float)j / (RINGS / 2) * PI * 0.5f;
+    for (int j = 0; j <= RINGS/2; j++) {
+        float phi = (float)j / (RINGS/2) * PI * 0.5f;
         for (int i = 0; i <= SLICES; i++) {
             float theta = (float)i / SLICES * 2.f * PI;
             pushSphere(theta, phi, HALF_H);
         }
     }
     int topOff = 0;
-    int topRows = RINGS / 2 + 1;
+    int topRows = RINGS/2 + 1;
 
-    for (int j = 0; j <= RINGS / 2; j++) {
-        float phi = -(float)j / (RINGS / 2) * PI * 0.5f;
+    for (int j = 0; j <= RINGS/2; j++) {
+        float phi = -(float)j / (RINGS/2) * PI * 0.5f;
         for (int i = 0; i <= SLICES; i++) {
             float theta = (float)i / SLICES * 2.f * PI;
             pushSphere(theta, phi, -HALF_H);
         }
     }
-    int botOff = topRows * (SLICES + 1);
+    int botOff = topRows * (SLICES+1);
 
-    int cylOff = botOff + topRows * (SLICES + 1);
+    int cylOff = botOff + topRows * (SLICES+1);
     for (int j = 0; j <= 1; j++) {
         float yy = (j == 0) ? -HALF_H : HALF_H;
         for (int i = 0; i <= SLICES; i++) {
             float theta = (float)i / SLICES * 2.f * PI;
             float nx = sinf(theta), nz = cosf(theta);
-            verts.push_back({ nx * R, yy, nz * R, nx, 0, nz });
+            verts.push_back({nx*R, yy, nz*R, nx, 0, nz});
         }
     }
 
     auto quad = [&](int row0, int row1, int off, int s) {
         for (int i = 0; i < s; i++) {
-            uint32_t a = off + row0 * (s + 1) + i, b = a + 1;
-            uint32_t c = off + row1 * (s + 1) + i, d = c + 1;
-            idx.insert(idx.end(), { a,b,c, b,d,c });
+            uint32_t a = off + row0*(s+1)+i, b = a+1;
+            uint32_t c = off + row1*(s+1)+i, d = c+1;
+            idx.insert(idx.end(), {a,b,c, b,d,c});
         }
-        };
+    };
 
-    for (int j = 0; j < RINGS / 2; j++) quad(j, j + 1, topOff, SLICES);
-    for (int j = 0; j < RINGS / 2; j++) quad(j, j + 1, botOff, SLICES);
+    for (int j = 0; j < RINGS/2; j++) quad(j, j+1, topOff, SLICES);
+    for (int j = 0; j < RINGS/2; j++) quad(j, j+1, botOff, SLICES);
     quad(0, 1, cylOff, SLICES);
 
     glGenVertexArrays(1, &gGhostVAO);
@@ -1873,11 +1881,11 @@ static void buildGhostMesh() {
     glGenBuffers(1, &gGhostEBO);
     glBindVertexArray(gGhostVAO);
     glBindBuffer(GL_ARRAY_BUFFER, gGhostVBO);
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GV), verts.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, verts.size()*sizeof(GV), verts.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gGhostEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(uint32_t), idx.data(), GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GV), (void*)0);
-    glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GV), (void*)(3 * sizeof(float)));
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size()*sizeof(uint32_t), idx.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0); glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(GV),(void*)0);
+    glEnableVertexAttribArray(1); glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,sizeof(GV),(void*)(3*sizeof(float)));
     glBindVertexArray(0);
     gGhostIdxCount = (GLsizei)idx.size();
 }
@@ -1890,7 +1898,7 @@ static Vec3 peerColor(int id) {
         {0.90f, 0.25f, 0.85f},   // magenta
     };
     int i = id % 4;
-    return { hues[i][0], hues[i][1], hues[i][2] };
+    return {hues[i][0], hues[i][1], hues[i][2]};
 }
 
 // 8×8 pixel font covering printable ASCII 32-127 (public domain VGA font).
@@ -2011,8 +2019,8 @@ static GLuint makeNameTex(const char* name, const float* color3)
     for (int y = 0; y < th; y++)
         for (int x = 0; x < tw; x++) {
             // Rounded corners via distance to corner squares
-            bool corner = (x < 2 && y < 2) || (x < 2 && y >= th - 2) ||
-                (x >= tw - 2 && y < 2) || (x >= tw - 2 && y >= th - 2);
+            bool corner = (x < 2 && y < 2) || (x < 2 && y >= th-2) ||
+                          (x >= tw-2 && y < 2) || (x >= tw-2 && y >= th-2);
             if (!corner) {
                 uint8_t* p = px.data() + (y * tw + x) * 4;
                 p[0] = 20; p[1] = 20; p[2] = 20; p[3] = 180;
@@ -2067,8 +2075,8 @@ void main(){
         vec2(-1,-1), vec2( 1, 1), vec2(-1, 1)
     );
     vec2 uvs[6] = vec2[](
-        vec2(0,1), vec2(1,1), vec2(1,0),
-        vec2(0,1), vec2(1,0), vec2(0,0)
+        vec2(1,1), vec2(0,1), vec2(0,0),
+        vec2(1,1), vec2(0,0), vec2(1,0)
     );
     vec2 c = corners[gl_VertexID];
     vec3 wpos = uCenter
@@ -2090,8 +2098,8 @@ void main(){
 }
 )GLSL";
 
-static GLuint gNametagProg = 0;
-static GLuint gNametagVAO = 0;   // empty VAO — geometry is procedural in VS
+static GLuint gNametagProg  = 0;
+static GLuint gNametagVAO   = 0;   // empty VAO — geometry is procedural in VS
 
 static GLuint compileShader(GLenum t, const char* s) {
     GLuint sh = glCreateShader(t); glShaderSource(sh, 1, &s, nullptr); glCompileShader(sh);
@@ -2141,7 +2149,7 @@ static GLuint loadTexture(const char* path) {
 
 // main
 int main(int argc, char** argv) {
-    bool        netIsHost = false;
+        bool        netIsHost = false;
     std::string netJoinIp = "";
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--host") == 0) netIsHost = true;
@@ -2149,7 +2157,7 @@ int main(int argc, char** argv) {
     }
     bool netEnabled = netIsHost || !netJoinIp.empty();
 
-    NetCtx gNet;
+        NetCtx gNet;
     if (netEnabled) {
         if (!netInit(gNet, netIsHost, netJoinIp.empty() ? nullptr : netJoinIp.c_str())) {
             fprintf(stderr, "[net] Failed to initialise networking — running offline.\n");
@@ -2157,20 +2165,19 @@ int main(int argc, char** argv) {
         }
     }
 
-    {
+        {
         FILE* f = fopen("username.txt", "r");
         if (f) {
             char buf[64] = {};
             if (fgets(buf, sizeof(buf), f)) {
                 // Strip newline
                 int n = (int)strlen(buf);
-                while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' || buf[n - 1] == ' ')) buf[--n] = 0;
+                while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r' || buf[n-1] == ' ')) buf[--n] = 0;
                 if (n > 0 && n <= 31) strncpy(gNet.myUsername, buf, 31);
             }
             fclose(f);
             fprintf(stdout, "[net] Username: %s\n", gNet.myUsername);
-        }
-        else {
+        } else {
             // Create a default file so the user knows it exists
             FILE* fw = fopen("username.txt", "w");
             if (fw) { fprintf(fw, "Player\n"); fclose(fw); }
@@ -2211,12 +2218,12 @@ int main(int argc, char** argv) {
     glewExperimental = GL_TRUE; glewInit();
     SDL_Log("GL: %s | %s", glGetString(GL_VERSION), glGetString(GL_RENDERER));
 
-    gGhostProg = makeProgram(GHOST_VS, GHOST_FS);
+        gGhostProg = makeProgram(GHOST_VS, GHOST_FS);
     buildGhostMesh();
     gNametagProg = makeProgram(NAMETAG_VS, NAMETAG_FS);
     glGenVertexArrays(1, &gNametagVAO); // empty — VS generates geometry
 
-    maEngineConfig = ma_engine_config_init();
+        maEngineConfig = ma_engine_config_init();
     maEngineConfig.channels = 2;
     maEngineConfig.sampleRate = 44100;
     ma_result maResult = ma_engine_init(&maEngineConfig, &maEngine);
@@ -2305,8 +2312,8 @@ int main(int argc, char** argv) {
         if (hasLand)     ma_sound_set_volume(&sndLand, SFX_VOLUME / 128.f);
     }
 
-    // Place PNG/JPG files next to the executable.
-// If missing a grey fallback is used — the engine still runs fine.
+        // Place PNG/JPG files next to the executable.
+    // If missing a grey fallback is used — the engine still runs fine.
     GLuint texWall = loadTexture("tex_concrete.png");
     GLuint texRoad = loadTexture("tex_road.png");
     GLuint texSidewalk = loadTexture("tex_sidewalk.png");
@@ -2330,7 +2337,7 @@ int main(int argc, char** argv) {
     GLuint ps1Prog = makeProgram(QUAD_VS, PS1_FS);
     GLuint skyVAO; glGenVertexArrays(1, &skyVAO);
 
-    GLuint hdrFBO, hdrTex, hdrDepthTex;
+        GLuint hdrFBO, hdrTex, hdrDepthTex;
     glGenFramebuffers(1, &hdrFBO);
     glGenTextures(1, &hdrTex);
     glBindTexture(GL_TEXTURE_2D, hdrTex);
@@ -2352,7 +2359,7 @@ int main(int argc, char** argv) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, hdrDepthTex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    GLuint shadowFBO, shadowTex;
+        GLuint shadowFBO, shadowTex;
     glGenFramebuffers(1, &shadowFBO);
     glGenTextures(1, &shadowTex);
     glBindTexture(GL_TEXTURE_2D, shadowTex);
@@ -2368,7 +2375,7 @@ int main(int argc, char** argv) {
     glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Shares hdrDepthTex so we only need a colour attachment
+        // Shares hdrDepthTex so we only need a colour attachment
     GLuint normalFBO, normalTex;
     glGenFramebuffers(1, &normalFBO);
     glGenTextures(1, &normalTex);
@@ -2381,7 +2388,7 @@ int main(int argc, char** argv) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, hdrDepthTex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    const int AW = SCREEN_W / 4, AH = SCREEN_H / 4;
+        const int AW = SCREEN_W / 4, AH = SCREEN_H / 4;
     GLuint ssaoFBO, ssaoTex, ssaoBlurFBO, ssaoBlurTex;
     glGenFramebuffers(1, &ssaoFBO);    glGenTextures(1, &ssaoTex);
     glGenFramebuffers(1, &ssaoBlurFBO); glGenTextures(1, &ssaoBlurTex);
@@ -2399,7 +2406,7 @@ int main(int argc, char** argv) {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    GLuint dofFBO[2], dofTex[2];
+        GLuint dofFBO[2], dofTex[2];
     glGenFramebuffers(2, dofFBO); glGenTextures(2, dofTex);
     for (int i = 0; i < 2; i++) {
         glBindTexture(GL_TEXTURE_2D, dofTex[i]);
@@ -2413,7 +2420,7 @@ int main(int argc, char** argv) {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    const int BW = SCREEN_W / 2, BH = SCREEN_H / 2;
+        const int BW = SCREEN_W / 2, BH = SCREEN_H / 2;
     const int QW = SCREEN_W / 4, QH = SCREEN_H / 4;
     GLuint bloomFBO[2], bloomTex[2];
     glGenFramebuffers(2, bloomFBO); glGenTextures(2, bloomTex);
@@ -2429,7 +2436,7 @@ int main(int argc, char** argv) {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    GLuint wideBloomFBO[2], wideBloomTex[2];
+        GLuint wideBloomFBO[2], wideBloomTex[2];
     glGenFramebuffers(2, wideBloomFBO); glGenTextures(2, wideBloomTex);
     for (int i = 0; i < 2; i++) {
         glBindTexture(GL_TEXTURE_2D, wideBloomTex[i]);
@@ -2445,7 +2452,7 @@ int main(int argc, char** argv) {
 
     GLuint quadVAO; glGenVertexArrays(1, &quadVAO);
 
-    GLuint ps1FBO, ps1Tex;
+        GLuint ps1FBO, ps1Tex;
     glGenFramebuffers(1, &ps1FBO); glGenTextures(1, &ps1Tex);
     glBindTexture(GL_TEXTURE_2D, ps1Tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_W, SCREEN_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -2461,7 +2468,7 @@ int main(int argc, char** argv) {
     chunks.reserve(256);
     g_chunks = &chunks;
 
-    constexpr float DAY_DUR = DAY_MINUTES * 60.f;
+        constexpr float DAY_DUR = DAY_MINUTES * 60.f;
     constexpr float NIGHT_DUR = NIGHT_MINUTES * 60.f;
     constexpr float CYCLE_DUR = DAY_DUR + NIGHT_DUR;
     float cycleTime = DAY_DUR * 0.35f;  // start at afternoon, not noon
@@ -2497,9 +2504,9 @@ int main(int argc, char** argv) {
     float fovShakeVel = 0.f;    // spring velocity
     float fovSmooth = FOV_DEG;
 
-    float stepTimer = 0.f;  // counts down; fires footstep when <= 0 while moving
+        float stepTimer = 0.f;  // counts down; fires footstep when <= 0 while moving
 
-    float camRollSmooth = 0.f;    // smoothed strafe lean applied to view
+        float camRollSmooth = 0.f;    // smoothed strafe lean applied to view
     float landSquish = 0.f;       // spring squish on landing (0=none, 1=full)
     float landSquishVel = 0.f;    // spring velocity for squish bounce
     float shakeX = 0.f, shakeY = 0.f; // landing screen shake offsets
@@ -2596,7 +2603,7 @@ int main(int argc, char** argv) {
         fovShake += fovShakeVel * dt;
         fovShake = std::max(0.f, fovShake);
 
-        // Full 3D look direction (used for dash + wall hop)
+                // Full 3D look direction (used for dash + wall hop)
         Vec3 lookDir = norm3({
             cosf(cam.pitch) * sinf(cam.yaw),
             sinf(cam.pitch),
@@ -2670,10 +2677,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        // physY tracks the true floor-relative position independently of camera
-// cam.pos.y is ONLY used for rendering — never fed back into physics
+                // physY tracks the true floor-relative position independently of camera
+        // cam.pos.y is ONLY used for rendering — never fed back into physics
 
-// Gravity
+        // Gravity
         if (!onGround) vel.y += GRAVITY * dt;
 
         // Integrate XZ + physics Y separately from camera Y
@@ -2715,10 +2722,14 @@ int main(int argc, char** argv) {
         }
         prevVelY = vel.y;
 
-
+                // If space is buffered and we just landed OR we're on ground, jump immediately.
+        // No friction penalty if you jump the same frame you land.
         bool canJump = onGround || coyoteT > 0.f;
         if (jumpQueued && canJump) {
-        
+            // Bhop speed chain: only apply the boost multiplier when already
+            // above MAX_SPEED — that speed was earned through air strafing and
+            // should be preserved. Below MAX_SPEED, just jump at current speed
+            // with no bonus, so spamming space on flat ground doesn't stack speed.
             float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
             if (hspd > MAX_SPEED) {
                 float boost = crouch ? BHOP_BOOST * 1.05f : BHOP_BOOST;
@@ -2734,10 +2745,15 @@ int main(int argc, char** argv) {
             if (hasJump) { ma_sound_seek_to_pcm_frame(&sndJump, 0); ma_sound_start(&sndJump); }
         }
         else if (justLanded) {
-          
+            // Landed without jumping: set bhop grace window to suppress friction
+            // briefly, giving the player a small window to still chain the bhop
             bhopGraceT = 0.08f;
         }
 
+                // Guard: don't start a slide if we're in a bhop chain (speed > MAX_SPEED).
+        // At bhop speeds the slide cap (SLIDE_SPEED) would kill momentum, which
+        // is exactly the "shift ruins bhop" problem. Let the player hold shift
+        // mid-air for the crouch-boost on the next jump without punishing them.
         if (crouch && onGround && !sliding) {
             float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
             if (hspd > MOVE_SPEED * 0.7f && hspd <= MAX_SPEED * 1.1f) {
@@ -2751,13 +2767,13 @@ int main(int argc, char** argv) {
         }
         if (!crouch && sliding) sliding = false;
 
-        static float smoothCrouch = 0.f; // 0=standing, 1=fully crouched
+                static float smoothCrouch = 0.f; // 0=standing, 1=fully crouched
         float crouchTarget = (crouch || sliding) ? 1.f : 0.f;
         smoothCrouch = lerpf(smoothCrouch, crouchTarget, clampf(dt * 14.f, 0.f, 1.f));
         float crouchDrop = smoothCrouch * (EYE_H - EYE_CROUCH); // max drop in units
         cam.pos.y = physY - crouchDrop; // camera Y = physics Y minus visual crouch
 
-        {
+                {
             Vec3 physPos = { cam.pos.x, physY, cam.pos.z };
             Vec3 physOld = { oldPos.x, physY, oldPos.z };
             Vec3 resolved = resolveXZ(physOld, physPos, 0.35f);
@@ -2781,25 +2797,25 @@ int main(int argc, char** argv) {
             cam.pos.z = resolved.z;
         }
 
-        // Speed-based FOV, scales up to BHOP_CAP
+        // Speed-based FOV — scales up to BHOP_CAP
         float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
         float fovTarget = FOV_DEG + clampf(hspd * FOV_SPEED_SCALE, 0.f, FOV_SPEED_MAX);
         fovSmooth = lerpf(fovSmooth, fovTarget, clampf(dt * FOV_LERP_RATE, 0.f, 1.f));
         float dynFov = fovSmooth + fovShake;
 
-        // Project velocity onto right vector to get lateral speed
+                // Project velocity onto right vector to get lateral speed
         Vec3 rgtNow = camRight(cam);
         float lateralSpd = vel.x * rgtNow.x + vel.z * rgtNow.z;
         float rollTarget = clampf(lateralSpd / BHOP_CAP, -1.f, 1.f) * STRAFE_LEAN_MAX;
         camRollSmooth = lerpf(camRollSmooth, rollTarget, clampf(dt * STRAFE_LEAN_RATE, 0.f, 1.f));
 
-        // Simple damped spring, squish decays and bounces back
+                // Simple damped spring: squish decays and bounces back
         landSquishVel += (-LAND_SQUISH_STIFF * landSquish - LAND_SQUISH_DAMP * landSquishVel) * dt;
         landSquish += landSquishVel * dt;
         landSquish = clampf(landSquish, -0.15f, 1.f); // allow small upward bounce
         shakeX = shakeY = 0.f;
 
-        {
+                {
             float hspd = sqrtf(vel.x * vel.x + vel.z * vel.z);
             if (onGround && hspd > FOOTSTEP_MIN_SPEED) {
                 stepTimer -= dt;
@@ -2821,7 +2837,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (netEnabled) {
+                if (netEnabled) {
             double nowSec = (double)now / 1000.0;
             // Receive all incoming packets (and relay if host)
             netPoll(gNet, nowSec);
@@ -2864,7 +2880,7 @@ int main(int argc, char** argv) {
             else ++it;
         }
 
-        cycleTime += dt;
+                cycleTime += dt;
         if (cycleTime >= CYCLE_DUR) cycleTime -= CYCLE_DUR;
 
         // sunAngle: 0=noon, PI=midnight
@@ -3059,7 +3075,7 @@ int main(int argc, char** argv) {
         for (auto& [key, ch] : chunks)
             if (ch.count > 0) { glBindVertexArray(ch.vao); glDrawArrays(GL_TRIANGLES, 0, ch.count); }
 
-        if (netEnabled && gGhostProg && gGhostVAO) {
+                if (netEnabled && gGhostProg && gGhostVAO) {
             double nowSec = (double)now / 1000.0;
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -3068,68 +3084,68 @@ int main(int argc, char** argv) {
             for (const auto& peer : gNet.peers) {
                 if (!peer.active) continue;
 
-                float px, py, pz;
+                    float px, py, pz;
                 netGetPeerPos(peer, nowSec, px, py, pz);
 
-                // rotate by peer yaw around Y axis.
+                    // rotate by peer yaw around Y axis.
                 float cy = cosf(peer.yaw), sy = sinf(peer.yaw);
-                float footY = py - EYE_H;
-                Mat4 model = {};
-                model.m[0] = cy; model.m[4] = 0; model.m[8] = sy; model.m[12] = px;
-                model.m[1] = 0;  model.m[5] = 1; model.m[9] = 0;  model.m[13] = footY + EYE_H * 0.5f;
-                model.m[2] = -sy; model.m[6] = 0; model.m[10] = cy; model.m[14] = pz;
+                    float footY = py - EYE_H;
+                    Mat4 model = {};
+                model.m[0]  =  cy; model.m[4]  = 0; model.m[8]  =  sy; model.m[12] = px;
+                model.m[1]  =  0;  model.m[5]  = 1; model.m[9]  =  0;  model.m[13] = footY + EYE_H * 0.5f;
+                model.m[2]  = -sy; model.m[6]  = 0; model.m[10] =  cy; model.m[14] = pz;
                 model.m[15] = 1.f;
 
                 Mat4 mvp = mat4Mul(vp, model);
-                uM4(gGhostProg, "uMVP", mvp);
+                uM4(gGhostProg, "uMVP",   mvp);
                 uM4(gGhostProg, "uModel", model);
                 Vec3 col = peerColor(peer.id);
-                u3f(gGhostProg, "uColor", col);
-                u3f(gGhostProg, "uSunDir", sunDir);
-                u1f(gGhostProg, "uNightFactor", nightFactor);
+                u3f(gGhostProg, "uColor",      col);
+                u3f(gGhostProg, "uSunDir",     sunDir);
+                u1f(gGhostProg, "uNightFactor",nightFactor);
                 glDrawElements(GL_TRIANGLES, gGhostIdxCount, GL_UNSIGNED_INT, 0);
             }
             glDisable(GL_BLEND);
 
-            if (gNametagProg && gNametagVAO) {
+                        if (gNametagProg && gNametagVAO) {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glDepthMask(GL_FALSE);
                 glUseProgram(gNametagProg);
                 glBindVertexArray(gNametagVAO);
-                Vec3 billRight = camR;
-                Vec3 billUp = camU;
-                glUniform3f(glGetUniformLocation(gNametagProg, "uCamRight"), billRight.x, billRight.y, billRight.z);
-                glUniform3f(glGetUniformLocation(gNametagProg, "uCamUp"), billUp.x, billUp.y, billUp.z);
+                        Vec3 billRight = camR;
+                Vec3 billUp    = camU;
+                glUniform3f(glGetUniformLocation(gNametagProg,"uCamRight"), billRight.x, billRight.y, billRight.z);
+                glUniform3f(glGetUniformLocation(gNametagProg,"uCamUp"),    billUp.x,    billUp.y,    billUp.z);
                 uM4(gNametagProg, "uVP", vp);
 
                 for (auto& peer : gNet.peers) {
                     if (!peer.active) continue;
 
-                    if (peer.nameTex == 0) {
+                            if (peer.nameTex == 0) {
                         if (peer.nameTex != 0) glDeleteTextures(1, &peer.nameTex);
                         float col[3];
                         Vec3 c = peerColor(peer.id);
-                        col[0] = c.x; col[1] = c.y; col[2] = c.z;
+                        col[0]=c.x; col[1]=c.y; col[2]=c.z;
                         peer.nameTex = makeNameTex(peer.username, col);
                     }
 
                     float px2, py2, pz2;
                     netGetPeerPos(peer, nowSec, px2, py2, pz2);
 
-                    float headY = py2 - EYE_H + EYE_H * 0.5f + 1.1f + 0.6f; // top of capsule + gap
+                            float headY = py2 - EYE_H + EYE_H * 0.5f + 1.1f + 0.6f; // top of capsule + gap
                     Vec3 anchor = { px2, headY, pz2 };
 
-                    int nameLen = (int)strlen(peer.username);
+                            int nameLen = (int)strlen(peer.username);
                     if (nameLen == 0) nameLen = 1;
                     float hw = nameLen * 0.09f + 0.15f;
                     float hh = 0.22f;
 
-                    glUniform3f(glGetUniformLocation(gNametagProg, "uCenter"), anchor.x, anchor.y, anchor.z);
-                    glUniform2f(glGetUniformLocation(gNametagProg, "uSize"), hw, hh);
+                    glUniform3f(glGetUniformLocation(gNametagProg,"uCenter"), anchor.x, anchor.y, anchor.z);
+                    glUniform2f(glGetUniformLocation(gNametagProg,"uSize"),   hw, hh);
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, peer.nameTex);
-                    glUniform1i(glGetUniformLocation(gNametagProg, "uTex"), 0);
+                    glUniform1i(glGetUniformLocation(gNametagProg,"uTex"), 0);
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }
                 glDepthMask(GL_TRUE);
@@ -3373,13 +3389,13 @@ int main(int argc, char** argv) {
     }
 
     for (auto& [k, ch] : chunks) freeChunk(ch);
-    if (netEnabled) {
+        if (netEnabled) {
         // Free nametag textures before killing GL context
         for (auto& p : gNet.peers)
             if (p.nameTex) { glDeleteTextures(1, &p.nameTex); p.nameTex = 0; }
         netShutdown(gNet);
     }
-    if (gGhostVAO) { glDeleteVertexArrays(1, &gGhostVAO); glDeleteBuffers(1, &gGhostVBO); glDeleteBuffers(1, &gGhostEBO); }
+        if (gGhostVAO)   { glDeleteVertexArrays(1, &gGhostVAO); glDeleteBuffers(1, &gGhostVBO); glDeleteBuffers(1, &gGhostEBO); }
     if (gGhostProg)  glDeleteProgram(gGhostProg);
     if (gNametagVAO) glDeleteVertexArrays(1, &gNametagVAO);
     if (gNametagProg)glDeleteProgram(gNametagProg);
