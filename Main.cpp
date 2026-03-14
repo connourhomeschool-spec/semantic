@@ -1654,17 +1654,6 @@ void main(){
         col=agx(col*uTonemapExposure); col=agxEotf(col);
     col=pow(max(col,vec3(0.)),vec3(1./uTonemapGamma));
 
-    // ============================================================
-    // POST-TONEMAP SCREEN-SPACE FOG  --  Silent Hill style
-
-    // Key properties:
-    //   * Very dense: geometry beyond ~150u is nearly invisible
-    //   * Ground-hugging: fog thickest at floor level, thinner overhead
-    //   * Sky = fog: sky pixels get same fog colour, no horizon seam
-    //   * Cold desaturated grey, independent of day/night sun palette
-    //   * Near-field haze: even close surfaces (20-80u) show scatter
-    // ============================================================
-
     // --- Silent Hill fog colour (driven by uniforms) ---
     vec3 fogColTM = mix(uFogColorDay, uFogColorNight, uNightFactor);
 
